@@ -9,7 +9,6 @@
 // @require      https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js
 // @license MIT
-// 自动更新设置 - 替换为您的GitHub信息
 // @updateURL    https://raw.githubusercontent.com/CodeGather/tampermonkey/main/lorealchina-material.user.js
 // @downloadURL  https://raw.githubusercontent.com/CodeGather/tampermonkey/main/lorealchina-material.user.js
 // @supportURL   https://github.com/CodeGather/tampermonkey/issues
