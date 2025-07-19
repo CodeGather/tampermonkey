@@ -18,8 +18,8 @@
     'use strict';
 
     // 版本控制
-    const SCRIPT_VERSION = '1.4';
-    console.log(`MPlus数据导出工具 v${SCRIPT_VERSION} 已加载 (多接口联动版)`);
+    const SCRIPT_VERSION = '1.5';
+    console.log(`导出MPlus物料数据工具 v${SCRIPT_VERSION}`);
 
     // 显示版本更新通知
     function showUpdateNotification() {
@@ -60,7 +60,7 @@
             
             // 显示更新日志
             document.getElementById('show-changelog').addEventListener('click', () => {
-                alert(`MPlus导出工具更新日志 v${SCRIPT_VERSION}：
+                alert(`导出MPlus物料数据工具更新日志 v${SCRIPT_VERSION}：
                 
 1. 添加了自动更新功能
 2. 优化了数据获取逻辑
