@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         导出MPlus物料数据工具
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  从MPlus系统获取店铺列表和安装数据并导出Excel
 // @author       21克的爱情提供技术支持
 // @match        *://mplus.lorealchina.com/*
@@ -18,7 +18,7 @@
     'use strict';
 
     // 版本控制
-    const SCRIPT_VERSION = '1.5';
+    const SCRIPT_VERSION = '1.6';
     console.log(`导出MPlus物料数据工具 v${SCRIPT_VERSION}`);
 
     // 显示版本更新通知
@@ -412,69 +412,70 @@
 
     // 获取店铺列表并导出数据
     function fetchShopListAndExportData() {
+        // 显示加载指示器并初始化进度条
         const loading = showLoading();
+        let progressBar = document.createElement('div');
+        progressBar.style.cssText = 'width: 80%; height: 10px; background: #eee; border-radius: 5px; margin: 20px auto 0;';
+        let progressInner = document.createElement('div');
+        progressInner.style.cssText = 'height: 100%; width: 0%; background: #409EFF; border-radius: 5px; transition: width 0.2s;';
+        progressBar.appendChild(progressInner);
+        let percentText = document.createElement('div');
+        percentText.style.cssText = 'text-align:center; font-size:12px; color:#409EFF; margin-top:5px;';
+        percentText.textContent = '0%';
+        loading.querySelector('div[style*="background: white;"]').appendChild(progressBar);
+        loading.querySelector('div[style*="background: white;"]').appendChild(percentText);
 
         fetchShopList()
             .then(shopList => {
                 console.log('获取到店铺列表:', shopList);
-
-                // 准备收集所有店铺的数据
-                const allInstallationData = [];
-                const shopPromises = [];
-
-                // 为每个店铺创建获取数据的Promise
-                shopList.forEach(shop => {
-                    shopPromises.push(
-                        fetchInstallationData(shop.counterId)
-                            .then(installationData => {
-                                // 将店铺信息添加到每条安装数据中
-                                return installationData.map(item => ({
-                                    ...item,
-                                    shopId: shop.counterId,
-                                    shopName: shop.counterName,
-                                    shopChannel: shop.channelName,
-                                    shopCity: shop.cityName
-                                }));
-                            })
-                            .catch(error => {
-                                console.error(`获取店铺 ${shop.counterName} 数据失败:`, error);
-                                return []; // 返回空数组不影响后续处理
-                            })
-                    );
-                    shopPromises.push(
-                        fetchLightData(shop.counterId, shop.counterName)
-                            .then(installationData => {
-                                // 将店铺信息添加到每条安装数据中
-                                return installationData.map(item => ({
-                                    ...item,
-                                    shopName: shop.counterName,
-                                    shopChannel: shop.channelName,
-                                    shopCity: shop.cityName
-                                }));
-                            })
-                            .catch(error => {
-                                console.error(`获取店铺 ${shop.counterName} 数据失败:`, error);
-                                return []; // 返回空数组不影响后续处理
-                            })
-                    );
-
-
-                });
-
-                // 等待所有店铺数据获取完成
-                return Promise.all(shopPromises)
-                    .then(results => {
-                    // 合并所有店铺的数据,并且格式化
-                    return results.flat(Infinity).map(item => {
-                        return {
-                            "包装编号":item.itemCode || "",
-                            "点位":item.lightPositionClass,
-                            "物料名称":`${item.itemName || item.pictureContent}${item.length && item.width ? (item.length + 'x' + item.width) : ''}`,
-                            "物料供应商": "",
-                            [item.shopName]: 1
-                        }
-                    })
-                });
+                const totalRequests = shopList.length * 2;
+                let finishedRequests = 0;
+                // 并发请求所有店铺的安装数据和灯片数据
+                const allPromises = shopList.flatMap(shop => [
+                    fetchInstallationData(shop.counterId)
+                        .then(installationData => installationData.map(item => ({
+                            ...item,
+                            shopId: shop.counterId,
+                            shopName: shop.counterName,
+                            shopChannel: shop.channelName,
+                            shopCity: shop.cityName
+                        })))
+                        .catch(error => {
+                            console.error(`获取店铺 ${shop.counterName} 安装数据失败:`, error);
+                            return [];
+                        })
+                        .finally(() => {
+                            finishedRequests++;
+                            const percent = Math.round(finishedRequests / totalRequests * 100);
+                            progressInner.style.width = percent + '%';
+                            percentText.textContent = percent + '%';
+                        }),
+                    fetchLightData(shop.counterId, shop.counterName)
+                        .then(lightData => lightData.map(item => ({
+                            ...item,
+                            shopName: shop.counterName,
+                            shopChannel: shop.channelName,
+                            shopCity: shop.cityName
+                        })))
+                        .catch(error => {
+                            console.error(`获取店铺 ${shop.counterName} 灯片数据失败:`, error);
+                            return [];
+                        })
+                        .finally(() => {
+                            finishedRequests++;
+                            const percent = Math.round(finishedRequests / totalRequests * 100);
+                            progressInner.style.width = percent + '%';
+                            percentText.textContent = percent + '%';
+                        })
+                ]);
+                return Promise.all(allPromises)
+                    .then(results => results.flat(Infinity).map(item => ({
+                        "包装编号": item.itemCode || "",
+                        "点位": item.lightPositionClass,
+                        "物料名称": `${item.itemName || item.pictureContent}${item.length && item.width ? (item.length + 'x' + item.width) : ''}`,
+                        "物料供应商": "",
+                        [item.shopName]: 1
+                    })));
             })
             .then(allData => {
                 loading.remove();
