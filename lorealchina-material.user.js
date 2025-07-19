@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         导出MPlus物料数据工具
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  从MPlus系统获取店铺列表和安装数据并导出Excel
 // @author       21克的爱情提供技术支持
 // @match        *://mplus.lorealchina.com/*
@@ -18,7 +18,7 @@
     'use strict';
 
     // 版本控制
-    const SCRIPT_VERSION = '1.6';
+    const SCRIPT_VERSION = '1.7';
     console.log(`导出MPlus物料数据工具 v${SCRIPT_VERSION}`);
 
     // 显示版本更新通知
@@ -61,12 +61,10 @@
             // 显示更新日志
             document.getElementById('show-changelog').addEventListener('click', () => {
                 alert(`导出MPlus物料数据工具更新日志 v${SCRIPT_VERSION}：
-                
 1. 添加了自动更新功能
 2. 优化了数据获取逻辑
 3. 修复了部分店铺数据缺失问题
 4. 改进了Excel导出格式
-                
 下次更新将自动下载安装！`);
                 notification.remove();
                 localStorage.setItem('mplusExportToolVersion', SCRIPT_VERSION);
@@ -469,13 +467,24 @@
                         })
                 ]);
                 return Promise.all(allPromises)
-                    .then(results => results.flat(Infinity).map(item => ({
-                        "包装编号": item.itemCode || "",
-                        "点位": item.lightPositionClass,
-                        "物料名称": `${item.itemName || item.pictureContent}${item.length && item.width ? (item.length + 'x' + item.width) : ''}`,
-                        "物料供应商": "",
-                        [item.shopName]: 1
-                    })));
+                    .then( results => {
+                        const cloneList = results.flat(Infinity).map(item => ({
+                            "包装编号": item.itemCode || "",
+                            "点位": item.lightPositionClass,
+                            "物料名称": `${item.itemName || item.pictureContent}${item.length && item.width ? (item.length + 'x' + item.width) : ''}`,
+                            "物料供应商": "",
+                            [item.shopName]: 1
+                        }))
+                        const list = cloneList.reduce((prev, next) => {
+                            prev[next['物料名称']] = {
+                                ...prev[next['物料名称']] || {},
+                                ...next
+                            }
+                            return prev
+                        }, {})
+                        return Object.values(list)
+                    }
+                );
             })
             .then(allData => {
                 loading.remove();
