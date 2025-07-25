@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         导出MPlus物料数据工具
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  从MPlus系统获取店铺列表和安装数据并导出Excel
 // @author       21克的爱情提供技术支持
 // @match        *://mplus.lorealchina.com/*
@@ -16,9 +16,8 @@
 
 (function() {
     'use strict';
-
     // 版本控制
-    const SCRIPT_VERSION = '1.7';
+    const SCRIPT_VERSION = GM_info.script.version;
     console.log(`导出MPlus物料数据工具 v${SCRIPT_VERSION}`);
 
     // 显示版本更新通知
@@ -40,7 +39,7 @@
                 max-width: 300px;
                 font-family: Arial, sans-serif;
             `;
-            
+
             notification.innerHTML = `
                 <h3 style="margin:0 0 10px 0;">MPlus导出工具已更新!</h3>
                 <p>当前版本: v${SCRIPT_VERSION}</p>
@@ -49,35 +48,28 @@
                     <button id="show-changelog" style="background:#2196F3;color:white;border:none;padding:5px 10px;border-radius:3px;cursor:pointer;">更新日志</button>
                 </div>
             `;
-            
+
             document.body.appendChild(notification);
-            
+
             // 关闭通知
             document.getElementById('close-notification').addEventListener('click', () => {
                 notification.remove();
                 localStorage.setItem('mplusExportToolVersion', SCRIPT_VERSION);
             });
-            
+
             // 显示更新日志
             document.getElementById('show-changelog').addEventListener('click', () => {
                 alert(`导出MPlus物料数据工具更新日志 v${SCRIPT_VERSION}：
-1. 添加了自动更新功能
-2. 优化了数据获取逻辑
-3. 修复了部分店铺数据缺失问题
-4. 改进了Excel导出格式
-下次更新将自动下载安装！`);
+1. 修复切换项目导出按钮消失问题
+2、修复切换项目后数据没有切换`);
                 notification.remove();
                 localStorage.setItem('mplusExportToolVersion', SCRIPT_VERSION);
             });
         }
     }
 
-    // 按钮创建标志
-    let buttonCreated = false;
-
     // 创建符合Element UI风格的按钮
     function createExportButton() {
-        if (buttonCreated) return;
 
         // 创建按钮
         const btn = document.createElement('button');
@@ -107,6 +99,8 @@
         `;
         document.head.appendChild(style);
 
+        const hasBtn = document.querySelector("#mplus-export-btn")
+        if (hasBtn) return
         // 点击事件处理
         btn.addEventListener('click', function() {
             fetchShopListAndExportData();
@@ -122,7 +116,6 @@
             container.style.margin = '10px';
             container.appendChild(btn);
             secondElement.appendChild(container);
-            buttonCreated = true;
             console.log('按钮已添加到.second元素');
         } else {
             // 如果没找到.second元素，将按钮固定在页面右下角
@@ -131,7 +124,6 @@
             btn.style.right = '20px';
             btn.style.zIndex = '9999';
             document.body.appendChild(btn);
-            buttonCreated = true;
             console.log('未找到.second元素，按钮已添加到body');
         }
     }
@@ -216,10 +208,13 @@
             const baseUrl = getBaseApiUrl();
             const apiPath = "/pmmsapi/pmms-new-launch-bff/supplier/fetchReportInstallationCounter";
             const userParams = getUserInfoParams();
+            const data = new URL(location.href)
+            const procurementRequestId = data.searchParams.get("procurementRequestId")
+            console.log(procurementRequestId)
 
             const requestData = {
                 "requestId": crypto.randomUUID(),
-                "procurementId": "1b2dcb92-d187-407d-8cd6-52e93ee528b2",
+                "procurementId": procurementRequestId,
                 "workflowId": "WNL252RNER21",
                 "page": 0,
                 "size": 100, // 获取更多店铺
@@ -268,6 +263,10 @@
     // 获取灯片数据
     function fetchLightData(counterId, shopName) {
         return new Promise((resolve, reject) => {
+            const data = new URL(location.href)
+            const procurementRequestId = data.searchParams.get("procurementRequestId")
+            console.log(procurementRequestId)
+
             const baseUrl = getBaseApiUrl();
             const apiPath = "/pmmsapi/pmms-new-launch-bff/supplier/fetchInstallationLight";
             const userParams = getUserInfoParams();
@@ -276,7 +275,7 @@
                 "apiVersion": "string",
                 "counterId": counterId,
                 "page": 0,
-                "procurementId": "1b2dcb92-d187-407d-8cd6-52e93ee528b2",
+                "procurementId": procurementRequestId,
                 "requestId": crypto.randomUUID(),
                 "size": 15,
                 "timestamp": 0,
@@ -359,6 +358,9 @@
             const baseUrl = getBaseApiUrl();
             const apiPath = "/pmmsapi/pmms-new-launch-bff/supplier/fetchInstallationNewItem";
             const userParams = getUserInfoParams();
+            const data = new URL(location.href)
+            const procurementRequestId = data.searchParams.get("procurementRequestId")
+            console.log(procurementRequestId)
 
             const requestData = {
                 "apiVersion": "string",
@@ -368,7 +370,7 @@
                 ],
                 "counterId": counterId,
                 "page": 0,
-                "procurementId": "1b2dcb92-d187-407d-8cd6-52e93ee528b2",
+                "procurementId": procurementRequestId,
                 "requestId": crypto.randomUUID(),
                 "size": 15,
                 "timestamp": 0,
@@ -612,18 +614,16 @@
 
     // 使用MutationObserver监听DOM变化
     const observer = new MutationObserver(function(mutations) {
-        if (!buttonCreated) {
-            // 检查是否有新增节点包含.second类
-            const hasSecondClass = Array.from(mutations).some(mutation => {
-                return Array.from(mutation.addedNodes).some(node => {
-                    return node.nodeType === 1 && (node.classList.contains('second') ||
-                           node.querySelector('.second') !== null);
-                });
+        // 检查是否有新增节点包含.second类
+        const hasSecondClass = Array.from(mutations).some(mutation => {
+            return Array.from(mutation.addedNodes).some(node => {
+                return node.nodeType === 1 && (node.classList.contains('second') ||
+                                               node.querySelector('.second') !== null);
             });
+        });
 
-            if (hasSecondClass || document.querySelector('.second')) {
-                createExportButton();
-            }
+        if (hasSecondClass || document.querySelector('.second')) {
+            createExportButton();
         }
     });
 
