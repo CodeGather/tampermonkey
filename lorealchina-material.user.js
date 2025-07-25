@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         导出MPlus物料数据工具
 // @namespace    http://tampermonkey.net/
-// @version      1.9
+// @version      1.9.1
 // @description  从MPlus系统获取店铺列表和安装数据并导出Excel
 // @author       21克的爱情提供技术支持
 // @match        *://mplus.lorealchina.com/*
@@ -205,11 +205,15 @@
     // 获取店铺列表
     function fetchShopList() {
         return new Promise((resolve, reject) => {
-            const baseUrl = getBaseApiUrl();
-            const apiPath = "/pmmsapi/pmms-new-launch-bff/supplier/fetchReportInstallationCounter";
-            const userParams = getUserInfoParams();
             const data = new URL(location.href)
             const procurementRequestId = data.searchParams.get("procurementRequestId")
+            const tabType = data.searchParams.get("tabType")
+            const baseUrl = getBaseApiUrl();
+            let apiPath = "/pmmsapi/pmms-new-launch-bff/supplier/fetchReportInstallationCounter"
+            if (tabType) {
+                apiPath = "/pmmsapi/pmms-new-launch-bff/supplier/fetchInstallationCounter";
+            }
+            const userParams = getUserInfoParams();
             console.log(procurementRequestId)
 
             const requestData = {
