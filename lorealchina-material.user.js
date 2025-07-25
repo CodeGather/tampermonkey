@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         导出MPlus物料数据工具
 // @namespace    http://tampermonkey.net/
-// @version      1.8
+// @version      1.9
 // @description  从MPlus系统获取店铺列表和安装数据并导出Excel
 // @author       21克的爱情提供技术支持
 // @match        *://mplus.lorealchina.com/*
@@ -107,24 +107,24 @@
         });
 
         // 尝试找到class为second的元素
-        const secondElement = document.querySelector('.second');
+        const secondElement = document.querySelector('.footerAction');
 
         if (secondElement) {
-            // 如果找到.second元素，将按钮插入其中
+            // 如果找到.footerAction元素，将按钮插入其中
             const container = document.createElement('div');
             container.style.display = 'inline-block';
             container.style.margin = '10px';
             container.appendChild(btn);
             secondElement.appendChild(container);
-            console.log('按钮已添加到.second元素');
+            console.log('按钮已添加到.footerAction元素');
         } else {
-            // 如果没找到.second元素，将按钮固定在页面右下角
+            // 如果没找到.footerAction元素，将按钮固定在页面右下角
             btn.style.position = 'fixed';
             btn.style.bottom = '20px';
             btn.style.right = '20px';
             btn.style.zIndex = '9999';
             document.body.appendChild(btn);
-            console.log('未找到.second元素，按钮已添加到body');
+            console.log('未找到.footerAction元素，按钮已添加到body');
         }
     }
 
@@ -614,15 +614,15 @@
 
     // 使用MutationObserver监听DOM变化
     const observer = new MutationObserver(function(mutations) {
-        // 检查是否有新增节点包含.second类
+        // 检查是否有新增节点包含.footerAction类
         const hasSecondClass = Array.from(mutations).some(mutation => {
             return Array.from(mutation.addedNodes).some(node => {
-                return node.nodeType === 1 && (node.classList.contains('second') ||
-                                               node.querySelector('.second') !== null);
+                return node.nodeType === 1 && (node.classList.contains('footerAction') ||
+                                               node.querySelector('.footerAction') !== null);
             });
         });
 
-        if (hasSecondClass || document.querySelector('.second')) {
+        if (hasSecondClass || document.querySelector('.footerAction')) {
             createExportButton();
         }
     });
@@ -634,7 +634,7 @@
     });
 
     // 初始检查
-    if (document.querySelector('.second')) {
+    if (document.querySelector('.footerAction')) {
         createExportButton();
     }
 
