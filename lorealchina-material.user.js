@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         导出MPlus物料数据工具
 // @namespace    http://tampermonkey.net/
-// @version      1.9.1
+// @version      1.9.2
 // @description  从MPlus系统获取店铺列表和安装数据并导出Excel
 // @author       21克的爱情提供技术支持
 // @match        *://mplus.lorealchina.com/*
@@ -203,7 +203,7 @@
     }
 
     // 获取店铺列表
-    function fetchShopList() {
+    function fetchShopList(page, size, list) {
         return new Promise((resolve, reject) => {
             const data = new URL(location.href)
             const procurementRequestId = data.searchParams.get("procurementRequestId")
@@ -220,8 +220,8 @@
                 "requestId": crypto.randomUUID(),
                 "procurementId": procurementRequestId,
                 "workflowId": "WNL252RNER21",
-                "page": 0,
-                "size": 100, // 获取更多店铺
+                page,
+                size, // 获取更多店铺
                 "supplierId": userParams.supplierId,
                 "timestamp": 0,
                 "apiVersion": "string",
@@ -249,7 +249,13 @@
                     if (response.status === 200) {
                         const data = JSON.parse(response.responseText);
                         if (data && Array.isArray(data.data.dataList)) {
-                            resolve(data.data.dataList);
+                            list = list.concat(data.data.dataList)
+                            if (data.data.dataList.length == size) {
+                                page++
+                                resolve(fetchShopList(page, size, list));
+                            } else {
+                                resolve(list);
+                            }
                         } else {
                             reject(new Error("返回的店铺列表数据格式不正确"));
                         }
@@ -415,7 +421,7 @@
     }
 
     // 获取店铺列表并导出数据
-    function fetchShopListAndExportData() {
+    async function fetchShopListAndExportData() {
         // 显示加载指示器并初始化进度条
         const loading = showLoading();
         let progressBar = document.createElement('div');
@@ -429,7 +435,7 @@
         loading.querySelector('div[style*="background: white;"]').appendChild(progressBar);
         loading.querySelector('div[style*="background: white;"]').appendChild(percentText);
 
-        fetchShopList()
+        fetchShopList(0, 50, [])
             .then(shopList => {
                 console.log('获取到店铺列表:', shopList);
                 const totalRequests = shopList.length * 2;
